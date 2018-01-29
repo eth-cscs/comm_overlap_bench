@@ -330,9 +330,11 @@ int main(int argc, char** argv) {
             avg_alltoall += total_time_alltoall_g[i];
         }
         avg /= (double)num_ranks;
+        avg_alltoall /= (double)num_ranks;
+
         for (int i = 0; i < num_ranks; ++i) {
             rms += (total_time_g[i] - avg) * (total_time_g[i] - avg);
-            rms_alltoall += (total_time_alltoall_g[i] - avg) * (total_time_alltoall_g[i] - avg);
+            rms_alltoall += (total_time_alltoall_g[i] - avg_alltoall) * (total_time_alltoall_g[i] - avg_alltoall);
         }
 
         rms /= (double)num_ranks;

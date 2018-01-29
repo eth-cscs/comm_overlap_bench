@@ -1,5 +1,6 @@
 #include "Definitions.h"
 #include "HorizontalDiffusionSA.h"
+#include "AllToAllV.h"
 #include "MPIHelper.h"
 #include "Options.h"
 #include <cmath>
@@ -277,6 +278,19 @@ int main(int argc, char** argv) {
         }
     }
 
+    AllToAllV alltoallv;
+
+#if ENABLE_MPI_TIMER
+    double start_alltoall_time = MPI_Wtime();
+#endif
+
+    alltoallv.Apply();
+
+#if ENABLE_MPI_TIMER
+    double end_alltoall_time = MPI_Wtime();
+    double total_time_alltoall = end_alltoall_time-start_alltoall_time;
+#endif
+
 #ifdef CUDA_BACKEND
     cudaProfilerStop();
     cudaDeviceSynchronize();
@@ -299,24 +313,34 @@ int main(int argc, char** argv) {
     int rank_id;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank_id);
     std::vector< double > total_time_g(num_ranks);
+    std::vector< double > total_time_alltoall_g(num_ranks);
 
     MPI_Gather(&total_time, 1, MPI_DOUBLE, &(total_time_g[0]), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Gather(&total_time_alltoall, 1, MPI_DOUBLE, &(total_time_alltoall_g[0]), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
 
     if (rank_id == 0) {
         double avg = 0.0;
         double rms = 0.0;
+        double avg_alltoall = 0.0;
+        double rms_alltoall = 0.0;
+
         for (int i = 0; i < num_ranks; ++i) {
             avg += total_time_g[i];
+            avg_alltoall += total_time_alltoall_g[i];
         }
         avg /= (double)num_ranks;
         for (int i = 0; i < num_ranks; ++i) {
             rms += (total_time_g[i] - avg) * (total_time_g[i] - avg);
+            rms_alltoall += (total_time_alltoall_g[i] - avg) * (total_time_alltoall_g[i] - avg);
         }
 
         rms /= (double)num_ranks;
         rms = std::sqrt(rms);
 
         std::cout << "ELAPSED TIME: " << avg << " +- + " << rms << std::endl;
+        std::cout << "ELAPSED TIME: " << avg_alltoall << " +- + " << rms_alltoall << std::endl;
+
     }
 #else
     std::cout << "Timers disabled: Enable by compiling with -DENABLE_BOOST_TIMER (Boost timers) or -DENABLE_MPI_TIMER "

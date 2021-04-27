@@ -97,28 +97,17 @@ void readOptions(int argc, char** argv)
 
 void setupDevice()
 {
-#ifdef MVAPICH2
-    const char* env_p = std::getenv("SLURM_PROCID");
-    if(!env_p) {
-        std::cout << "SLURM_PROCID not set" << std::endl;
-        exit (EXIT_FAILURE);
-    }
-#else
-    const char* env_p = std::getenv("OMPI_COMM_WORLD_RANK");
-    if(!env_p) {
-        std::cout << "OMPI_COMM_WORLD_RANK not set" << std::endl;
-        exit (EXIT_FAILURE);
-    }
-#endif
 
+    int rank
     int numGPU;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     cudaError_t error = cudaGetDeviceCount(&numGPU);
     if(error)  {
         std::cout << "CUDA ERROR " << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    error = cudaSetDevice(atoi(env_p)%numGPU);
+    error = cudaSetDevice(rank%numGPU);
     if(error)  {
         std::cout << "CUDA ERROR " << std::endl;
         exit(EXIT_FAILURE);
